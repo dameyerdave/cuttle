@@ -20,7 +20,18 @@ if [ "$1" == "backup" ]; then
 		user=$(echo $source | awk '{print $1}')
 		host=$(echo $source | awk '{print $2}')
 		path=$(echo $source | awk '{print $3}')
-		rsync -avzR -e "ssh -i $DIR/cuttle.key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" --progress $user@$host:$path $CUTTLE_TEMP/${host}
+		includes=$(echo $source | awk '{print $4}')
+		include=''
+		for inc in ${includes//;/ }
+		do
+			include+=" --include='${inc}'"
+		done
+		rsync -avzR -e "ssh -i $DIR/cuttle.key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
+		--progress \
+		--include='*/' \
+		${include} \
+		--exclude='*' \
+		$user@$host:$path $CUTTLE_TEMP/${host}
 	done < <(cat cuttle.sources)
 elif [ "$1" == "key-exchange" ]; then
 	while read source
