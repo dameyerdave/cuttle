@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# collects files from different systems
+# Rerequs:
+# - each host must have rsync installed
+# - ssh key exchange must took place
+
+DIR=$(cd $(dirname $0); pwd -P)
+source $DIR/cuttle.conf
+
+function usage {
+	echo "USAGE $(basename $0) backup|setup|key-exchange"
+	exit 1
+}
+
+if [ "$1" == "backup" ]; then
+	while read source
+	do
+		if echo $source | grep -e "^#" 2>&1 >/dev/null; then continue; fi
+		user=$(echo $source | awk '{print $1}')
+		host=$(echo $source | awk '{print $2}')
+		path=$(echo $source | awk '{print $3}')
+		rsync -avz -e "ssh -i $DIR/cuttle.key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" --progress $user@$host:$path $CUTTLE_TEMP/$host
+	done < <(cat cuttle.sources)
+elif [ "$1" == "key-exchange" ]; then
+	while read source
+	do
+		if echo $source | grep -e "^#" 2>&1 >/dev/null; then continue; fi
+		user=$(echo $source | awk '{print $1}')
+		host=$(echo $source | awk '{print $2}')
+		cat $DIR/cuttle.key.pub | ssh $user@$host 'mkdir -p ~/.ssh; chmod 700 ~/.ssh; cat >> ~/.ssh/authorized_keys'
+	done < <(cat cuttle.sources)
+elif [ "$1" == "setup" ]; then
+	ssh-keygen -N '' -f $DIR/cuttle.key
+else
+	usage
+fi
