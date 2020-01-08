@@ -20,19 +20,25 @@ if [ "$1" == "backup" ]; then
 		user=$(echo $source | awk '{print $1}')
 		host=$(echo $source | awk '{print $2}')
 		path=$(echo $source | awk '{print $3}')
-		includes=$(echo $source | awk '{print $4}')
-		include=''
-		for inc in ${includes//;/ }
+		filters=$(echo "$source" | awk '{if ($4 == "*") print "#"; else print $4}')
+		ff=$DIR/cuttle.filter
+		echo '+ */' > $ff
+		for fil in ${filters//;/ }
 		do
-			include+=" --include='${inc}'"
+			fil=$(echo $fil | tr '#' '*')
+			echo "+ ${fil}" >> $ff
 		done
-		rsync -avzR -e "ssh -i $DIR/cuttle.key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
+		echo "- *" >> $ff
+		hostdir=''
+		if [ $PER_HOST_DIR -eq 1 ]; then
+			hostdir="$host"
+		fi	
+		rsync -avzmR -e "ssh -i $DIR/cuttle.key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
 		--progress \
-		--include='*/' \
-		${include} \
-		--exclude='*' \
-		$user@$host:$path $CUTTLE_TEMP/${host}
+		--filter="merge $ff" \
+		$user@$host:$path $CUTTLE_TEMP/${hostdir}
 	done < <(cat cuttle.sources)
+	rm -f $ff
 elif [ "$1" == "key-exchange" ]; then
 	while read source
 	do
