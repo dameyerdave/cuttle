@@ -1,2 +1,4 @@
-# user	host	path
-root	sh	/var/tmp
+# user	host	path		filter
+root	sh	/var/tmp	*
+root	sh	/opt/splunk/etc **/*.conf;**/*.csv
+root	idx	/var/tmp	*
