@@ -13,6 +13,7 @@ function usage {
 	exit 1
 }
 
+shopt -s -o noglob
 if [ "$1" == "backup" ]; then
 	while read source
 	do
@@ -20,12 +21,11 @@ if [ "$1" == "backup" ]; then
 		user=$(echo $source | awk '{print $1}')
 		host=$(echo $source | awk '{print $2}')
 		path=$(echo $source | awk '{print $3}')
-		filters=$(echo "$source" | awk '{if ($4 == "*") print "#"; else print $4}')
+		filters=$(echo "$source" | awk '{print $4}')
 		ff=$DIR/cuttle.filter
 		echo '+ */' > $ff
 		for fil in ${filters//;/ }
 		do
-			fil=$(echo $fil | tr '#' '*')
 			echo "+ ${fil}" >> $ff
 		done
 		echo "- *" >> $ff
@@ -36,8 +36,8 @@ if [ "$1" == "backup" ]; then
 		rsync -avzmR -e "ssh -i $DIR/cuttle.key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
 		--progress \
 		--filter="merge $ff" \
-		$user@$host:$path $CUTTLE_TEMP/${hostdir}
-	done < <(cat cuttle.sources)
+		$user@$host:$path $CUTTLE_TEMP/${hostdir} 2> /dev/null
+	done < <(cat $DIR/cuttle.sources)
 	rm -f $ff
 elif [ "$1" == "key-exchange" ]; then
 	while read source
@@ -45,8 +45,8 @@ elif [ "$1" == "key-exchange" ]; then
 		if echo $source | grep -e "^#" 2>&1 >/dev/null; then continue; fi
 		user=$(echo $source | awk '{print $1}')
 		host=$(echo $source | awk '{print $2}')
-		cat $DIR/cuttle.key.pub | ssh $user@$host 'mkdir -p ~/.ssh; chmod 700 ~/.ssh; cat >> ~/.ssh/authorized_keys'
-	done < <(cat cuttle.sources)
+		ssh-copy-id -i $DIR/cuttle.key $user@$host 2> /dev/null
+	done < <(cat $DIR/cuttle.sources)
 elif [ "$1" == "setup" ]; then
 	ssh-keygen -N '' -f $DIR/cuttle.key
 else
